@@ -388,9 +388,20 @@ public class TileImage extends AppImage {
                 }
             }
         } else {
+            if (recycledBitmap != null) {
+                log("Tile decode failed, recycle inBitmap");
+                recycledBitmap.recycle();
+                log("Tile decode failed, try to decode again without inBitmap");
+                options.inBitmap = null;
+                bitmap = mBitmapRegionDecoder.decodeRegion(rect, options);
+            }
             //有可能图片边缘解析不了,遇到过多次
             //D/skia: --- decoder->decodeRegion returned false
-            log("Tile decode failed");
+            if (bitmap != null) {
+                log("Tile decode success");
+            } else {
+                log("Tile decode failed");
+            }
         }
         return bitmap;
     }
