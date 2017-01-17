@@ -92,6 +92,7 @@ public abstract class BitmapSource {
         private int mThumbnailOrientation;
         private Bitmap mThumbnailBitmap;
         private boolean mIsGif;
+        private boolean mCanPlayGif;
 
         private InputStreamSource(Context context, Uri uri, int thumbnailOrientation, Bitmap thumbnailBitmap) {
             this.mContext = context;
@@ -100,9 +101,10 @@ public abstract class BitmapSource {
             this.mThumbnailBitmap = thumbnailBitmap;
 
             InputStream inputStream = getInputStream();
-            if (ImageFormatUtility.isGif(inputStream) && inputStream != null) {
+            if (inputStream != null && ImageFormatUtility.isGif(inputStream)) {
+                this.mIsGif = true;
                 try {
-                    this.mIsGif = inputStream.available() <= 4 * 1024 * 1024;//only support 4mb gif
+                    this.mCanPlayGif = inputStream.available() <= 4 * 1024 * 1024;//only support 4mb gif
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -115,7 +117,7 @@ public abstract class BitmapSource {
         }
 
         public AppImage getBitmapImage() {
-            if (mIsGif) {
+            if (this.mIsGif && this.mCanPlayGif) {
                 InputStream inputStream = getInputStream();
                 AppImage image = GifImage.newInstance(mThumbnailBitmap, inputStream);
                 closeSilently(inputStream);
@@ -136,6 +138,10 @@ public abstract class BitmapSource {
         }
 
         public TileImage getTileImage() {
+            if (mIsGif) {
+                return null;
+            }
+
             InputStream inputStream = getInputStream();
             if (inputStream != null) {
                 BitmapFactory.Options options = new BitmapFactory.Options();
@@ -171,13 +177,15 @@ public abstract class BitmapSource {
         private Bitmap mThumbnailBitmap;
         private String mFilePath;
         private boolean mIsGif;
+        private boolean mCanPlayGif;
 
         private FileSource(Uri fileUri, int thumbnailOrientation, Bitmap thumbnailBitmap) {
             super();
             this.mFilePath = fileUri.getPath();
             if (ImageFormatUtility.isGif(this.mFilePath)) {
                 File file = new File(this.mFilePath);
-                this.mIsGif = file.length() <= 4 * 1024 * 1024;//only support 4mb gif
+                this.mIsGif = true;
+                this.mCanPlayGif = file.length() <= 4 * 1024 * 1024;//only support 4mb gif
             }
             this.mUri = fileUri;
             this.mThumbnailOrientation = thumbnailOrientation;
@@ -189,11 +197,14 @@ public abstract class BitmapSource {
         }
 
         public AppImage getBitmapImage() {
-            return mIsGif ? GifImage.newInstance(mThumbnailBitmap, this.mFilePath) : BitmapImage.newInstance(mThumbnailOrientation, mThumbnailBitmap);
+            if (this.mIsGif && this.mCanPlayGif) {
+                return GifImage.newInstance(mThumbnailBitmap, this.mFilePath);
+            }
+            return BitmapImage.newInstance(mThumbnailOrientation, mThumbnailBitmap);
         }
 
         public TileImage getTileImage() {
-            if (ImageFormatUtility.isGif(mFilePath)) {
+            if (mIsGif) {
                 return null;
             }
 
